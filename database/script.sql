@@ -211,6 +211,8 @@ DELIMITER ';';
 update Temporal set codigo_postal_cliente = null where codigo_postal_cliente = '-';
 update Temporal set codigo_postal_empleado = null where codigo_postal_empleado = '-';
 update Temporal set codigo_postal_tienda = null where codigo_postal_tienda = '-';
+update Temporal set lanzamiento = null where lanzamiento = '-';
+update Temporal set duracion = null where duracion = '-';
 
 -- insertar a base de datos
 -- pais
@@ -270,8 +272,15 @@ select distinct direccion_tienda, (select id_ciudad from Ciudad inner join Pais
                                      where Ciudad.nombre = Temporal.ciudad_tienda 
                                      and Pais.nombre = Temporal.pais_tienda ), cast(codigo_postal_tienda as int) from Temporal where direccion_tienda != '-'
 and direccion_tienda not in (select direccion from direccion);
-
-
+-- tienda
+insert into Tienda(nombre, id_direccion)
+select distinct nombre_tienda, (select id_direccion from Direccion where direccion = Temporal.direccion_tienda) from Temporal where nombre_tienda != '-'
+and nombre_tienda not in (select nombre from Tienda);
+-- entrega
+insert into Entrega(titulo, descripcion, lanzamiento, duracion, id_clasificacion)
+select distinct nombre_pelicula, descripcion_pelicula, cast(lanzamiento as int), cast(duracion as int), (select id_clasificacion from Clasificacion where clasificacion = Temporal.clasificacion)
+ from Temporal where nombre_pelicula != '-'
+and nombre_pelicula not in (select titulo from Entrega);
 
 -- encontrar repetidos
 SELECT COUNT(E.*) as Repetidos, E.nombre
