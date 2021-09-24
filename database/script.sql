@@ -1,6 +1,76 @@
+-- creacion de base de datos
 create database Practica1;
 use Practica1;
 
+-- eliminacion de tablas
+drop table ActorEntrega;
+drop table Actor;
+drop table CategoriaEntrega;
+drop table CAtegoria;
+drop table Renta;
+drop table Inventario;
+drop table Pelicula;
+drop table Lenguaje;
+drop table Entrega;
+drop table Clasificacion;
+drop table Cliente;
+drop table Tienda;
+drop table Empleado;
+drop table UsuarioEmpleado;
+drop table TipoEmpleado;
+drop table Direccion;
+drop table Ciudad;
+drop table Pais;
+drop table Temporal;
+
+
+
+-- creacion de tabla temporal
+create table Temporal(
+    nombre_cliente varchar(50),
+    correo_cliente varchar(60),
+    cliente_activo varchar(5),
+    fecha_creacion varchar(30),
+    tienda_preferida varchar(40),
+    direccion_cliente varchar(80),
+    codigo_postal_cliente varchar(10),
+    ciudad_cliente varchar(40),
+    pais_cliente varchar(40),
+    fecha_renta varchar(30),
+    fecha_retorno varchar(30),
+    monto_pagar varchar(10),
+    fecha_pago varchar(30),
+    nombre_empleado varchar(50),
+    correo_empleado varchar(60),
+    empleado_activo varchar(5),
+    tienda_empleado varchar(40),
+    usuario_empleado varchar(50),
+    contrasena_empleado varchar(100),
+    direccion_empleado varchar(80),
+    codigo_postal_empleado varchar(10),
+    ciudad_empleado varchar(40),
+    pais_empleado varchar(40),
+    nombre_tienda varchar(40),
+    encargado_tienda varchar(40),
+    direccion_tienda varchar(80),
+    codigo_postal_tienda varchar(10),
+    ciudad_tienda varchar(40),
+    pais_tienda varchar(40),
+    tienda_pelicula varchar(40),
+    nombre_pelicula varchar(50),
+    descripcion_pelicula varchar(250),
+    lanzamiento varchar(10),
+    dias_renta varchar(5),
+    costo_renta varchar(10),
+    duracion varchar(10),
+    costo_dano_renta varchar(10),
+    clasificacion varchar(5),
+    lenguaje_pelicula varchar(10),
+    categoria_pelicula varchar(20),
+    actor_pelicula varchar(50)
+);
+
+-- creacion de tablas db
 create table Pais(
     id_pais int generated always as identity primary key,
     nombre varchar(150) not null
@@ -132,21 +202,78 @@ create table ActorEntrega(
     foreign key (id_entrega) references Entrega(id_entrega)
 );
 
-drop table ActorEntrega;
-drop table Actor;
-drop table CategoriaEntrega;
-drop table CAtegoria;
-drop table Renta;
-drop table Inventario;
-drop table Pelicula;
-drop table Lenguaje;
-drop table Entrega;
-drop table Clasificacion;
-drop table Cliente;
-drop table Tienda;
-drop table Empleado;
-drop table UsuarioEmpleado;
-drop table TipoEmpleado;
-drop table Direccion;
-drop table Ciudad;
-drop table Pais;
+-- insertar a temporal
+COPY Temporal
+FROM '/home/juanpa/Documents/Archivos/Laboratorio/Practica1_MIa/BlockbusterData.csv'
+DELIMITER ';';
+
+-- hacer null lo que tiene -
+update Temporal set codigo_postal_cliente = null where codigo_postal_cliente = '-';
+update Temporal set codigo_postal_empleado = null where codigo_postal_empleado = '-';
+update Temporal set codigo_postal_tienda = null where codigo_postal_tienda = '-';
+
+-- insertar a base de datos
+-- pais
+insert into Pais (nombre)
+select distinct pais_cliente from Temporal where pais_cliente != '-'
+and pais_cliente not in (select nombre from Pais);
+insert into Pais (nombre)
+select distinct pais_empleado from Temporal where pais_empleado != '-'
+and pais_empleado not in (select nombre from Pais);
+insert into Pais (nombre)
+select distinct pais_tienda from Temporal where pais_tienda != '-'
+and pais_tienda not in (select nombre from Pais);
+-- actor
+insert into Actor (nombre)
+select distinct actor_pelicula from Temporal where actor_pelicula != '-';
+-- tipo empleado
+insert into TipoEmpleado (tipo) values ('encargado');
+insert into TipoEmpleado (tipo) values ('normal');
+-- usuario empleado
+insert into UsuarioEmpleado (usuario, contrasena)
+select distinct usuario_empleado , contrasena_empleado from Temporal where usuario_empleado != '-' and contrasena_empleado != '-';
+-- clasificacion
+insert into Clasificacion (clasificacion)
+select distinct clasificacion from Temporal where Temporal.clasificacion != '-';
+-- lenguaje
+insert into Lenguaje (lenguaje)
+select distinct lenguaje_pelicula from Temporal where lenguaje_pelicula != '-';
+-- categoria
+insert into Categoria (categoria)
+select distinct categoria_pelicula from temporal where categoria_pelicula != '-';
+-- ciudad 
+insert into Ciudad (nombre, id_pais)
+select distinct ciudad_cliente,(Select id_pais from Pais where nombre = Temporal.pais_cliente) from Temporal where ciudad_cliente != '-'
+and ciudad_cliente not in (select nombre from Ciudad);
+insert into Ciudad (nombre, id_pais)
+select distinct ciudad_empleado, (Select id_pais from Pais where nombre = Temporal.pais_empleado) from Temporal where ciudad_empleado != '-'
+and ciudad_empleado not in (select nombre from Ciudad);
+insert into Ciudad (nombre, id_pais)
+select distinct ciudad_tienda, (Select id_pais from Pais where nombre = Temporal.pais_tienda) from Temporal where ciudad_tienda != '-'
+and ciudad_tienda not in (select nombre from Ciudad);
+-- direccion
+insert into Direccion (direccion, id_ciudad, codigo_postal)
+select distinct direccion_cliente, (select id_ciudad from Ciudad inner join Pais 
+                                     on Ciudad.id_pais = Pais.id_pais 
+                                     where Ciudad.nombre = Temporal.ciudad_cliente 
+                                     and Pais.nombre = Temporal.pais_cliente ), cast(codigo_postal_cliente as int) from Temporal where direccion_cliente != '-'
+and direccion_cliente not in (select direccion from direccion);
+insert into Direccion (direccion, id_ciudad, codigo_postal)
+select distinct direccion_empleado, (select id_ciudad from Ciudad inner join Pais 
+                                     on Ciudad.id_pais = Pais.id_pais 
+                                     where Ciudad.nombre = Temporal.ciudad_empleado
+                                     and Pais.nombre = Temporal.pais_empleado), cast(codigo_postal_empleado as int) from Temporal where direccion_empleado != '-'
+and direccion_empleado not in (select direccion from direccion);
+insert into Direccion (direccion, id_ciudad, codigo_postal)
+select distinct direccion_tienda, (select id_ciudad from Ciudad inner join Pais 
+                                     on Ciudad.id_pais = Pais.id_pais 
+                                     where Ciudad.nombre = Temporal.ciudad_tienda 
+                                     and Pais.nombre = Temporal.pais_tienda ), cast(codigo_postal_tienda as int) from Temporal where direccion_tienda != '-'
+and direccion_tienda not in (select direccion from direccion);
+
+
+
+-- encontrar repetidos
+SELECT COUNT(E.*) as Repetidos, E.nombre
+FROM Ciudad AS E 
+GROUP BY E.nombre;
