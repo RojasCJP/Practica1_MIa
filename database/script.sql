@@ -101,10 +101,9 @@ create table UsuarioEmpleado(
 create table Empleado(
     id_empleado int generated always as identity primary key,
     nombre varchar(150) not null,
-    apellido varchar(150) not null,
     id_direccion int not null,
     email varchar(150) not null,
-    activo boolean not null,
+    activo varchar(5) not null,
     id_tipo int not null,
     id_usuario_empleado int not null,
     foreign key (id_direccion) references Direccion(id_direccion),
@@ -120,11 +119,10 @@ create table Tienda(
 create table Cliente(
     id_cliente int generated always as identity primary key,
     nombre varchar(150) not null,
-    apellido varchar(150),
     email varchar(150),
     id_direccion int not null,
     fecha_registro date,
-    activo boolean not null,
+    activo varchar(5) not null,
     id_tienda_favorita int,
     foreign key (id_direccion) references Direccion(id_direccion),
     foreign key (id_tienda_favorita) references Tienda(id_tienda)
@@ -281,6 +279,42 @@ insert into Entrega(titulo, descripcion, lanzamiento, duracion, id_clasificacion
 select distinct nombre_pelicula, descripcion_pelicula, cast(lanzamiento as int), cast(duracion as int), (select id_clasificacion from Clasificacion where clasificacion = Temporal.clasificacion)
  from Temporal where nombre_pelicula != '-'
 and nombre_pelicula not in (select titulo from Entrega);
+-- cliente
+insert into Cliente(
+    nombre,
+    email,
+    id_direccion,
+    fecha_registro,
+    activo,
+    id_tienda_favorita
+)
+select distinct 
+    nombre_cliente,
+    correo_cliente, 
+    (select id_direccion from Direccion where direccion = Temporal.direccion_cliente),
+    cast(fecha_creacion as date),
+    cliente_activo, 
+    (select id_tienda from Tienda where nombre = Temporal.tienda_preferida)
+from Temporal where nombre_cliente != '-'
+and nombre_cliente not in (select nombre from Cliente);
+-- empleado
+insert into Empleado(
+    nombre,
+    id_direccion,
+    email,
+    activo,
+    id_tipo,
+    id_usuario_empleado
+)
+select distinct
+    nombre_empleado,
+    (select id_direccion from Direccion where direccion = Temporal.direccion_empleado),
+    correo_empleado,
+    empleado_activo,
+    (case when nombre_empleado in (select encargado_tienda from Temporal) then 1 else 2 end),
+    (select id_usuario_empleado from UsuarioEmpleado where usuario = Temporal.usuario_empleado)
+from Temporal where nombre_empleado != '-'
+and nombre_empleado not in (select nombre from Empleado);
 
 -- encontrar repetidos
 SELECT COUNT(E.*) as Repetidos, E.nombre
