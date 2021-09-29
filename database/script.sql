@@ -6,7 +6,7 @@ use Practica1;
 drop table ActorEntrega;
 drop table Actor;
 drop table CategoriaEntrega;
-drop table CAtegoria;
+drop table Categoria;
 drop table Renta;
 drop table Inventario;
 drop table Pelicula;
@@ -101,6 +101,7 @@ create table UsuarioEmpleado(
 create table Empleado(
     id_empleado int generated always as identity primary key,
     nombre varchar(150) not null,
+    apellido varchar(150) not null,
     id_direccion int not null,
     email varchar(150) not null,
     activo varchar(5) not null,
@@ -119,6 +120,7 @@ create table Tienda(
 create table Cliente(
     id_cliente int generated always as identity primary key,
     nombre varchar(150) not null,
+    apellido varchar(150)not null,
     email varchar(150),
     id_direccion int not null,
     fecha_registro date,
@@ -156,16 +158,16 @@ create table Pelicula(
 );
 create table Inventario(
     id_inventario int generated always as identity primary key,
-    id_pelicula int not null,
+    id_entrega int not null,
     id_tienda int not null,
-    foreign key (id_pelicula) references Pelicula(id_pelicula),
+    foreign key (id_entrega) references Entrega(id_entrega),
     foreign key (id_tienda) references Tienda(id_tienda)
 );
 create table Renta(
     id_renta int generated always as identity primary key,
     fecha_renta date not null,
     fecha_retorno date,
-    monto_patar float not null,
+    monto_pagar float not null,
     fecha_pago date,
     id_cliente int,
     id_empleado int,
@@ -211,6 +213,10 @@ update Temporal set codigo_postal_empleado = null where codigo_postal_empleado =
 update Temporal set codigo_postal_tienda = null where codigo_postal_tienda = '-';
 update Temporal set lanzamiento = null where lanzamiento = '-';
 update Temporal set duracion = null where duracion = '-';
+update Temporal set fecha_renta = null where fecha_renta = '-';
+update Temporal set fecha_retorno = null where fecha_retorno = '-';
+update Temporal set monto_pagar = null where monto_pagar = '-';
+update Temporal set fecha_pago = null where fecha_pago = '-';
 
 -- insertar a base de datos
 -- pais
@@ -224,8 +230,8 @@ insert into Pais (nombre)
 select distinct pais_tienda from Temporal where pais_tienda != '-'
 and pais_tienda not in (select nombre from Pais);
 -- actor
-insert into Actor (nombre)
-select distinct actor_pelicula from Temporal where actor_pelicula != '-';
+insert into Actor (nombre, apellido)
+select distinct SPLIT_PART(actor_pelicula, ' ', 1), SPLIT_PART(actor_pelicula, ' ', 2) from Temporal where actor_pelicula != '-';
 -- tipo empleado
 insert into TipoEmpleado (tipo) values ('encargado');
 insert into TipoEmpleado (tipo) values ('normal');
@@ -282,6 +288,7 @@ and nombre_pelicula not in (select titulo from Entrega);
 -- cliente
 insert into Cliente(
     nombre,
+    apellido,
     email,
     id_direccion,
     fecha_registro,
@@ -289,17 +296,19 @@ insert into Cliente(
     id_tienda_favorita
 )
 select distinct 
-    nombre_cliente,
+    SPLIT_PART(nombre_cliente, ' ',1),
+    SPLIT_PART(nombre_cliente, ' ',2),
     correo_cliente, 
     (select id_direccion from Direccion where direccion = Temporal.direccion_cliente),
     cast(fecha_creacion as date),
     cliente_activo, 
     (select id_tienda from Tienda where nombre = Temporal.tienda_preferida)
 from Temporal where nombre_cliente != '-'
-and nombre_cliente not in (select nombre from Cliente);
+and SPLIT_PART(nombre_cliente, ' ',1) not in (select nombre from Cliente);
 -- empleado
 insert into Empleado(
     nombre,
+    apellido,
     id_direccion,
     email,
     activo,
@@ -307,16 +316,153 @@ insert into Empleado(
     id_usuario_empleado
 )
 select distinct
-    nombre_empleado,
+    SPLIT_PART(nombre_empleado, ' ',1),
+    SPLIT_PART(nombre_empleado, ' ',2),
     (select id_direccion from Direccion where direccion = Temporal.direccion_empleado),
     correo_empleado,
     empleado_activo,
     (case when nombre_empleado in (select encargado_tienda from Temporal) then 1 else 2 end),
     (select id_usuario_empleado from UsuarioEmpleado where usuario = Temporal.usuario_empleado)
 from Temporal where nombre_empleado != '-'
-and nombre_empleado not in (select nombre from Empleado);
+and SPLIT_PART(nombre_empleado, ' ',1) not in (select nombre from Empleado);
+-- pelicula 
+insert into Pelicula(
+    dias_renta,
+    costo_renta,
+    costo_dano_renta,
+    id_lenguaje,
+    id_entrega
+)select distinct 
+    cast(dias_renta as int),
+    cast(costo_renta as float),
+    cast(costo_dano_renta as float),
+    (select id_lenguaje from Lenguaje where lenguaje = Temporal.lenguaje_pelicula),
+    (select id_entrega from Entrega where titulo = Temporal.nombre_pelicula)
+from Temporal where nombre_pelicula != '-';
+-- renta
+insert into Renta(
+    fecha_renta,
+    fecha_retorno,
+    monto_pagar,
+    fecha_pago,
+    id_cliente,
+    id_empleado,
+    id_tienda,
+    id_pelicula    
+)select distinct
+    cast(fecha_renta as date),
+    cast(fecha_retorno as date),
+    cast(monto_pagar as float),
+    cast(fecha_pago as date),
+    (select id_cliente from Cliente where CONCAT(nombre,' ',apellido) = Temporal.nombre_cliente),
+    (select id_empleado from Empleado where CONCAT(nombre,' ',apellido) = Temporal.nombre_empleado),
+    (select id_tienda from Tienda where nombre = Temporal.nombre_tienda),
+    (select id_pelicula from Pelicula inner join Entrega on Pelicula.id_entrega = Entrega.id_entrega where Entrega.titulo = nombre_pelicula)
+from Temporal where fecha_renta != '-';
+-- actor entrega
+insert into ActorEntrega(
+    id_actor,
+    id_entrega
+)select distinct
+    (select id_actor from Actor where CONCAT(nombre,' ',apellido) = Temporal.actor_pelicula),
+    (select id_entrega from Entrega where titulo = Temporal.nombre_pelicula)
+from Temporal where actor_pelicula != '-' and nombre_pelicula != '-';
+-- categoria entrega
+insert into CategoriaEntrega(
+    id_categoria,
+    id_entrega
+)select distinct
+    (select id_categoria from Categoria where categoria = Temporal.categoria_pelicula),
+    (select id_entrega from Entrega where titulo = Temporal.nombre_pelicula)
+from Temporal where categoria_pelicula != '-' and nombre_pelicula != '-';
+-- inventario (pelicula tienda)
+-- TODO tengo que ver si lo tenemos que hacer asi o si lo tenemos que ver tambien por fecha
+insert into Inventario(
+    id_entrega,
+    id_tienda
+)select distinct
+    (select id_entrega from Entrega where titulo = Temporal.nombre_pelicula),
+    (select id_tienda from Tienda where nombre = Temporal.nombre_tienda)
+from Temporal where nombre_pelicula != '-' and nombre_tienda != '-';
 
 -- encontrar repetidos
 SELECT COUNT(E.*) as Repetidos, E.nombre
 FROM Ciudad AS E 
 GROUP BY E.nombre;
+
+select COUNT (E.*) as Repetidos, E.id_entrega
+from Pelicula as E
+GROUP BY E.id_entrega
+ORDER BY E.id_entrega ASC;
+
+-- selects
+-- 1
+select count(*) from Inventario 
+inner join Entrega on Entrega.id_entrega = Inventario.id_entrega 
+where Entrega.titulo = 'SUGAR WONKA';
+-- 2
+select 
+    cliente.nombre,
+    cliente.apellido,
+    sum(renta.monto_pagar) as pago_total
+from Renta 
+inner join cliente on cliente.id_cliente = renta.id_cliente 
+GROUP BY cliente.nombre, cliente.apellido
+having count(*) > 40;
+-- 3
+select
+    CONCAT(nombre, ' ', apellido) as nombre_completo
+from Actor
+where apellido like '%son%' or apellido like 'Son%'
+order by nombre;
+-- 4
+select distinct entrega.lanzamiento, actor.nombre, actor.apellido from actorentrega 
+inner join entrega on entrega.id_entrega = actorentrega.id_entrega
+inner join actor on actor.id_actor = actorentrega.id_actor
+where entrega.descripcion like '%Crocodile%' or
+entrega.descripcion like '%Shark%'
+order by actor.apellido;
+-- 5
+select
+    cliente.nombre,
+    cliente.apellido,
+    sum(renta.monto_pagar)/(select sum(renta.monto_pagar), pais.nombre from pais
+inner join ciudad on pais.id_pais = ciudad.id_pais
+inner join direccion on ciudad.id_ciudad = direccion.id_ciudad
+inner join cliente on cliente.id_direccion = direccion.id_direccion
+inner join renta on renta.id_cliente = cliente.id_cliente
+group by pais.id_pais
+having pais.nombre = 'Runion') as pago_total,
+    count(*) as rentas,
+    pais.nombre
+from Renta 
+inner join cliente on cliente.id_cliente = renta.id_cliente
+inner join direccion on cliente.id_direccion = direccion.id_direccion
+inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
+inner join pais on ciudad.id_pais = pais.id_pais 
+GROUP BY cliente.nombre, cliente.apellido, pais.nombre
+order by count(*) desc
+limit 1;
+
+select cliente.nombre, cliente.apellido, pais.nombre from cliente
+inner join direccion on cliente.id_direccion = direccion.id_direccion
+inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
+inner join pais on ciudad.id_pais = pais.id_pais;
+
+
+
+select sum(renta.monto_pagar), pais.nombre, cliente.nombre from pais
+inner join ciudad on pais.id_pais = ciudad.id_pais
+inner join direccion on ciudad.id_ciudad = direccion.id_ciudad
+inner join cliente on cliente.id_direccion = direccion.id_direccion
+inner join renta on renta.id_cliente = cliente.id_cliente
+group by pais.id_pais, cliente.nombre, cliente.apellido
+order by pais.nombre;
+
+(select sum(renta.monto_pagar), pais.nombre from pais
+inner join ciudad on pais.id_pais = ciudad.id_pais
+inner join direccion on ciudad.id_ciudad = direccion.id_ciudad
+inner join cliente on cliente.id_direccion = direccion.id_direccion
+inner join renta on renta.id_cliente = cliente.id_cliente
+group by pais.id_pais
+having pais.nombre = 'Runion');
