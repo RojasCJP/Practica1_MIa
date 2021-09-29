@@ -423,31 +423,56 @@ where entrega.descripcion like '%Crocodile%' or
 entrega.descripcion like '%Shark%'
 order by actor.apellido;
 -- 5
+with COSTOPAIS as (
+    select sum(renta.monto_pagar)as suma, pais.nombre from pais
+    inner join ciudad on pais.id_pais = ciudad.id_pais
+    inner join direccion on ciudad.id_ciudad = direccion.id_ciudad
+    inner join cliente on cliente.id_direccion = direccion.id_direccion
+    inner join renta on renta.id_cliente = cliente.id_cliente
+    group by pais.id_pais
+)
 select
     cliente.nombre,
     cliente.apellido,
-    sum(renta.monto_pagar)/(select sum(renta.monto_pagar), pais.nombre from pais
-inner join ciudad on pais.id_pais = ciudad.id_pais
-inner join direccion on ciudad.id_ciudad = direccion.id_ciudad
-inner join cliente on cliente.id_direccion = direccion.id_direccion
-inner join renta on renta.id_cliente = cliente.id_cliente
-group by pais.id_pais
-having pais.nombre = 'Runion') as pago_total,
+    sum(renta.monto_pagar) as pago_persona,
+    COSTOPAIS.suma as pago_pais,
     count(*) as rentas,
-    pais.nombre
-from Renta 
+    (sum(renta.monto_pagar)/COSTOPAIS.suma)*100 as porcentaje
+from Renta cross join COSTOPAIS
 inner join cliente on cliente.id_cliente = renta.id_cliente
 inner join direccion on cliente.id_direccion = direccion.id_direccion
 inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
 inner join pais on ciudad.id_pais = pais.id_pais 
-GROUP BY cliente.nombre, cliente.apellido, pais.nombre
+GROUP BY cliente.nombre, cliente.apellido, COSTOPAIS.suma, COSTOPAIS.nombre, pais.nombre
+having COSTOPAIS.nombre = pais.nombre
 order by count(*) desc
 limit 1;
-
+-- 6
+with CLIENTESCIUDAD as(
+    select count(cliente.id_cliente)as clientes, ciudad.nombre as nombre, ciudad.id_pais from Ciudad
+    inner join Direccion on Direccion.id_ciudad = Ciudad.id_ciudad
+    inner join Cliente on Cliente.id_direccion = Direccion.id_direccion
+    group by ciudad.nombre, ciudad.id_pais
+), CLIENTESPAIS as(
+    select count(cliente.id_cliente)as clientes, pais.nombre as nombre, pais.id_pais from Pais
+    inner join Ciudad on Ciudad.id_pais = Pais.id_pais
+    inner join Direccion on Direccion.id_ciudad = Ciudad.id_ciudad
+    inner join Cliente on Cliente.id_direccion = Direccion.id_direccion
+    group by pais.nombre, pais.id_pais
+)select 
+CLIENTESCIUDAD.nombre as nombre_ciudad,
+CLIENTESCIUDAD.clientes as clientes_ciudad,
+CLIENTESPAIS.nombre as nombre_pais,
+CLIENTESPAIS.clientes as clientes_pais, 
+(cast(CLIENTESCIUDAD.clientes as float)/CLIENTESPAIS.clientes)*100 as porcentaje
+from CLIENTESCIUDAD
+inner join CLIENTESPAIS on CLIENTESCIUDAD.id_pais = CLIENTESPAIS.id_pais;
+-- pruebas
 select cliente.nombre, cliente.apellido, pais.nombre from cliente
 inner join direccion on cliente.id_direccion = direccion.id_direccion
 inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
-inner join pais on ciudad.id_pais = pais.id_pais;
+inner join pais on ciudad.id_pais = pais.id_pais
+where cliente.nombre = 'Tim';
 
 
 
@@ -465,4 +490,4 @@ inner join direccion on ciudad.id_ciudad = direccion.id_ciudad
 inner join cliente on cliente.id_direccion = direccion.id_direccion
 inner join renta on renta.id_cliente = cliente.id_cliente
 group by pais.id_pais
-having pais.nombre = 'Runion');
+having pais.nombre = 'India');
