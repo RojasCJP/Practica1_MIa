@@ -452,7 +452,7 @@ with CLIENTESCIUDAD as(
     select count(cliente.id_cliente)as clientes, ciudad.nombre as nombre, ciudad.id_pais from Ciudad
     inner join Direccion on Direccion.id_ciudad = Ciudad.id_ciudad
     inner join Cliente on Cliente.id_direccion = Direccion.id_direccion
-    group by ciudad.nombre, ciudad.id_pais
+    group by ciudad.id_pais, ciudad.nombre
 ), CLIENTESPAIS as(
     select count(cliente.id_cliente)as clientes, pais.nombre as nombre, pais.id_pais from Pais
     inner join Ciudad on Ciudad.id_pais = Pais.id_pais
@@ -467,6 +467,96 @@ CLIENTESPAIS.clientes as clientes_pais,
 (cast(CLIENTESCIUDAD.clientes as float)/CLIENTESPAIS.clientes)*100 as porcentaje
 from CLIENTESCIUDAD
 inner join CLIENTESPAIS on CLIENTESCIUDAD.id_pais = CLIENTESPAIS.id_pais;
+-- 7
+with RENTAPAIS as (   
+    select count(renta.monto_pagar) as rentas, pais.nombre, pais.id_pais from renta
+    inner join cliente on cliente.id_cliente = renta.id_cliente
+    inner join direccion on cliente.id_direccion = direccion.id_direccion
+    inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
+    inner join pais on ciudad.id_pais = pais.id_pais
+    GROUP by pais.id_pais, pais.nombre
+), RENTACIUDAD as(
+    select count(renta.monto_pagar) as rentas, ciudad.nombre, ciudad.id_pais from renta
+    inner join cliente on cliente.id_cliente = renta.id_cliente
+    inner join direccion on cliente.id_direccion = direccion.id_direccion
+    inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
+    group by ciudad.id_ciudad, ciudad.nombre, ciudad.id_pais
+), CIUDADESPAIS as (
+    select count(*) as cantidad, pais.id_pais from pais
+    inner join ciudad on ciudad.id_pais = pais.id_pais
+    group by ciudad.id_pais, pais.id_pais
+)select RENTAPAIS.nombre as nombre_pais, RENTACIUDAD.nombre as nombre_ciudad, cast(RENTAPAIS.rentas as float)/CIUDADESPAIS.cantidad as rentas
+from RENTAPAIS
+inner join RENTACIUDAD on RENTACIUDAD.id_pais = RENTAPAIS.id_pais
+inner join CIUDADESPAIS on CIUDADESPAIS.id_pais = RENTAPAIS.id_pais;
+-- 8
+with RENTASTOTALES as(
+    select count(renta.monto_pagar) as rentas, pais.nombre, pais.id_pais from renta
+    inner join cliente on cliente.id_cliente = renta.id_cliente
+    inner join direccion on cliente.id_direccion = direccion.id_direccion
+    inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
+    inner join pais on ciudad.id_pais = pais.id_pais
+    GROUP by pais.id_pais, pais.nombre
+), RENTASSPORTS as(
+    select count(renta.monto_pagar) as rentas, pais.nombre, pais.id_pais from renta
+    inner join cliente on cliente.id_cliente = renta.id_cliente
+    inner join direccion on cliente.id_direccion = direccion.id_direccion
+    inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
+    inner join pais on ciudad.id_pais = pais.id_pais
+    inner join pelicula on renta.id_pelicula = pelicula.id_pelicula
+    inner join entrega on entrega.id_entrega = pelicula.id_entrega
+    inner join categoriaentrega on categoriaentrega.id_entrega = entrega.id_entrega
+    inner join categoria on categoriaentrega.id_categoria = categoria.id_categoria
+    GROUP by pais.id_pais, pais.nombre, categoria.categoria
+    having categoria.categoria = 'Sports'
+)select RENTASTOTALES.nombre, (cast(RENTASSPORTS.rentas as float)/RENTASTOTALES.rentas)*100, RENTASTOTALES.id_pais 
+from RENTASTOTALES 
+inner join RENTASSPORTS on RENTASTOTALES.id_pais = RENTASSPORTS.id_pais;
+-- 9
+with CIUDADESLISTADO as(
+    select ciudad.nombre, ciudad.id_ciudad, ciudad.id_pais from Ciudad
+    inner join Pais on pais.id_pais = ciudad.id_pais
+    where pais.nombre = 'United States'
+),RENTASCIUDADES as(
+    select count(renta.monto_pagar) as rentas, ciudad.nombre, ciudad.id_ciudad, ciudad.id_pais from renta
+    inner join cliente on cliente.id_cliente = renta.id_cliente
+    inner join direccion on cliente.id_direccion = direccion.id_direccion
+    inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
+    inner join pais on ciudad.id_pais = pais.id_pais
+    group by ciudad.nombre, ciudad.id_ciudad, ciudad.id_pais, pais.nombre
+    having pais.nombre = 'United States'
+),RENTASDAYTON as(
+    select count(renta.monto_pagar) as rentas, ciudad.nombre, ciudad.id_ciudad, ciudad.id_pais from renta
+    inner join cliente on cliente.id_cliente = renta.id_cliente
+    inner join direccion on cliente.id_direccion = direccion.id_direccion
+    inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
+    group by ciudad.nombre, ciudad.id_ciudad, ciudad.id_pais
+    having ciudad.nombre = 'Dayton'
+)select CIUDADESLISTADO.nombre, RENTASCIUDADES.rentas from CIUDADESLISTADO
+inner join RENTASCIUDADES on CIUDADESLISTADO.id_ciudad = RENTASCIUDADES.id_ciudad
+inner join RENTASDAYTON on CIUDADESLISTADO.id_pais = RENTASDAYTON.id_pais
+where RENTASCIUDADES.rentas > RENTASDAYTON.rentas;
+-- 10
+with TOPS as(
+select 
+    ciudad.nombre as ciudad,
+    pais.nombre as pais,
+    categoria.categoria,
+    count(categoria.categoria) as contador,
+    row_number() over (partition by ciudad.nombre order by count(categoria.categoria) desc) as rank
+from renta
+inner join cliente on cliente.id_cliente = renta.id_cliente
+inner join direccion on cliente.id_direccion = direccion.id_direccion
+inner join ciudad on direccion.id_ciudad = ciudad.id_ciudad
+inner join pais on ciudad.id_pais = pais.id_pais
+inner join pelicula on renta.id_pelicula = pelicula.id_pelicula
+inner join entrega on entrega.id_entrega = pelicula.id_entrega
+inner join categoriaentrega on categoriaentrega.id_entrega = entrega.id_entrega
+inner join categoria on categoriaentrega.id_categoria = categoria.id_categoria
+group by ciudad.id_ciudad, ciudad.nombre, pais.nombre, categoria.categoria
+)select * from TOPS 
+where rank = 1
+and categoria = 'Horror';
 -- pruebas
 select cliente.nombre, cliente.apellido, pais.nombre from cliente
 inner join direccion on cliente.id_direccion = direccion.id_direccion
