@@ -1,10 +1,3 @@
--- insertar a temporal
-COPY Temporal
-FROM '/home/juanpa/Documents/Archivos/Laboratorio/Practica1_MIa/BlockbusterData.csv'
-DELIMITER ';'
-CSV HEADER;
-
--- hacer null lo que tiene -
 update Temporal set codigo_postal_cliente = null where codigo_postal_cliente = '-';
 update Temporal set codigo_postal_empleado = null where codigo_postal_empleado = '-';
 update Temporal set codigo_postal_tienda = null where codigo_postal_tienda = '-';
