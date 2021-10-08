@@ -49,6 +49,12 @@ async def consulta4():
     return jsonify(consulta)
 
 
+@app.route('/consulta42', methods=['GET'])
+async def consulta42():
+    consulta = await conection_db(CONSULTA42)
+    return jsonify(consulta)
+
+
 @app.route('/consulta5', methods=['GET'])
 async def consulta5():
     consulta = await conection_db(CONSULTA5)
@@ -113,6 +119,12 @@ async def cargarTemporal():
 async def cargarModelo():
     await conection_db(CARGAMODELO)
     return {"respuesta": "se cargo el modelo correctamente"}
+
+
+@app.route('/counts', methods=['GET'])
+async def counts():
+    consulta = await conection_db(COUNTS)
+    return jsonify(consulta)
 
 
 if __name__ == '__main__':

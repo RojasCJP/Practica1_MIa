@@ -27,6 +27,12 @@ inner join actor on actor.id_actor = actorentrega.id_actor
 where entrega.descripcion like '%Crocodile%' or
 entrega.descripcion like '%Shark%'
 order by actor.apellido asc;"""
+CONSULTA42 = """select distinct entrega.lanzamiento, actor.nombre, actor.apellido from actorentrega 
+inner join entrega on entrega.id_entrega = actorentrega.id_entrega
+inner join actor on actor.id_actor = actorentrega.id_actor
+where entrega.descripcion like '%Crocodile%' and
+entrega.descripcion like '%Shark%'
+order by actor.apellido asc;"""
 CONSULTA5 = """with COSTOPAIS as (
     select sum(renta.monto_pagar)as suma, pais.nombre from pais
     inner join ciudad on pais.id_pais = ciudad.id_pais
@@ -560,6 +566,65 @@ insert into Inventario(
     (select id_entrega from Entrega where titulo = Temporal.nombre_pelicula),
     (select id_tienda from Tienda where nombre = Temporal.nombre_tienda)
 from Temporal where nombre_pelicula != '-' and nombre_tienda != '-';"""
+COUNTS = '''with A as(
+select count(*) as cu from ActorEntrega
+), B as(
+select count(*) as cu from Actor
+), C as(
+select count(*) as cu from CategoriaEntrega
+), D as(
+select count(*) as cu from Categoria
+), E as(
+select count(*) as cu from Renta
+), F as(
+select count(*) as cu from Inventario
+), G as(
+select count(*) as cu from Pelicula
+), H as(
+select count(*) as cu from Lenguaje
+), I as(
+select count(*) as cu from Entrega
+), J as(
+select count(*) as cu from Clasificacion
+), K as(
+select count(*) as cu from Cliente
+), L as(
+select count(*) as cu from Tienda
+), M as(
+select count(*) as cu from Empleado
+), N as(
+select count(*) as cu from UsuarioEmpleado
+), O as(
+select count(*) as cu from TipoEmpleado
+), P as(
+select count(*) as cu from Direccion
+), Q as(
+select count(*) as cu from Ciudad
+), R as(
+select count(*) as cu from Pais
+), S as(
+select count(*) as cu from Temporal
+)select 
+    A.cu as actentrega,
+    B.cu as actor,
+    C.cu as catentrega,
+    D.cu as categoria,
+    E.cu as renta,
+    F.cu as inventario,
+    G.cu as pelicula,
+    H.cu as lenguaje,
+    I.cu as entrega,
+    J.cu as clasificacion,
+    K.cu as cliente,
+    L.cu as tienda,
+    M.cu as empleado,
+    N.cu as usempleado,
+    O.cu as tipo_empleado,
+    P.cu as direccion,
+    Q.cu as ciudad,
+    R.cu as pais,
+    S.cu as temporal
+from A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S;'''
 
 
 def selects(query, conection):
